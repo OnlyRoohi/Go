@@ -23,9 +23,13 @@
       "description": "Your Telegram bot token.",
       "required": true
     },
+    "MONGODB_URI": {
+      "description": "Primary MongoDB connection string. Either MONGODB_URI or MONGO_URI must be provided.",
+      "required": false
+    },
     "MONGO_URI": {
-      "description": "Your MongoDB connection string.",
-      "required": true
+      "description": "Legacy MongoDB connection string (backward compatibility). Either MONGODB_URI or MONGO_URI must be provided.",
+      "required": false
     },
     "OWNER_ID": {
       "description": "The user ID of the bot owner.",
@@ -115,7 +119,7 @@
       "required": false
     },
     "COOKIES_URL": {
-      "description": "URL to a cookies file for yt-dlp. (vai batbin.me)",
+      "description": "URL to a cookies file for yt-dlp. (via batbin.me)",
       "required": false
     },
     "SUPPORT_GROUP": {

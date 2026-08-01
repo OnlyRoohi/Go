@@ -10,7 +10,7 @@ package vc
 
 /*
 #cgo linux LDFLAGS: -L . -lntgcalls -lm -lz
-#cgo darwin LDFLAGS: -L . -lntgcalls -lc++ -lz -lbz2 -liconv -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework QuartzCore -framework CoreMedia -framework VideoToolbox -framework AppKit -framework Metal -framework MetalKit -framework OpenGL -framework IOSurface -framework ScreenCaptureKit
+#cgo darwin LDFLAGS: -L . -lntgcalls -lc++ -lz -lbz2 -liconv -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework QuartzCore -framework CoreMedia -framework VideoToolbox[...]
 
 // Currently is supported only dynamically linked library on Windows due to
 // https://github.com/golang/go/issues/63903
@@ -37,7 +37,7 @@ import (
 	"os"
 	"strings"
 
-	td "github.com/AshokShau/gotdbot"
+	dt "github.com/AshokShau/gotdbot"
 )
 
 // getClientIndex selects an assistant client index (0-based) for a given chat.
@@ -48,6 +48,16 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 
 	if totalClients == 0 {
 		return -1, fmt.Errorf("no clients are available")
+	}
+
+	// If DB not initialized, pick a random assistant but do not persist assignment.
+	if db.Instance == nil {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(totalClients)))
+		if err != nil {
+			// fallback to 0
+			return 0, nil
+		}
+		return int(n.Int64()), nil
 	}
 
 	assignedIndex, err := db.Instance.GetAssistant(chatID)
@@ -64,7 +74,8 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 	if err != nil {
 		slog.Info("[TelegramCalls] Could not generate a random number", "error", err)
 		newClientIndex := 0
-		if assignedIndex == -1 && chatID != 0 {
+		// Only try to assign when DB is ready
+		if assignedIndex == -1 && chatID != 0 && db.Instance != nil {
 			if _, err := db.Instance.AssignAssistant(chatID, newClientIndex); err != nil {
 				logger.Info("[TelegramCalls] DB.AssignAssistant error", "error", err)
 			}
@@ -73,7 +84,7 @@ func (c *TelegramCalls) getClientIndex(chatID int64) (int, error) {
 	}
 
 	newClientIndex := int(n.Int64())
-	if chatID != 0 {
+	if chatID != 0 && db.Instance != nil {
 		if _, err := db.Instance.AssignAssistant(chatID, newClientIndex); err != nil {
 			logger.Info("[TelegramCalls] DB.AssignAssistant error", "error", err)
 		}
@@ -101,7 +112,7 @@ func (c *TelegramCalls) GetGroupAssistant(chatID int64) (*Assistant, int, error)
 
 // playSong downloads and plays a single song. It sends a message to the chat to indicate the download status
 // and updates it with the song's information once playback begins.
-func (c *TelegramCalls) playSong(bot *td.Client, chatID int64, song *utils.CachedTrack) error {
+func (c *TelegramCalls) playSong(bot *dt.Client, chatID int64, song *utils.CachedTrack) error {
 	reply, err := bot.SendTextMessage(chatID, fmt.Sprintf("Downloading %s...", song.Name), nil)
 	if err != nil {
 		slog.Info("[playSong] Failed to send message", "error", err)
@@ -113,7 +124,7 @@ func (c *TelegramCalls) playSong(bot *td.Client, chatID int64, song *utils.Cache
 	}
 
 	if err = c.PlayMedia(bot, chatID, song.FilePath, song.IsVideo, ""); err != nil {
-		_, _ = reply.EditText(bot, err.Error(), &td.EditTextMessageOpts{ParseMode: "HTML", DisableWebPagePreview: true})
+		_, _ = reply.EditText(bot, err.Error(), &dt.EditTextMessageOpts{ParseMode: "HTML", DisableWebPagePreview: true})
 		return nil
 	}
 
@@ -129,7 +140,7 @@ func (c *TelegramCalls) playSong(bot *td.Client, chatID int64, song *utils.Cache
 		html.EscapeString(song.User),
 	)
 
-	_, err = reply.EditText(bot, text, &td.EditTextMessageOpts{
+	_, err = reply.EditText(bot, text, &dt.EditTextMessageOpts{
 		ReplyMarkup:           core.ControlButtons("play"),
 		ParseMode:             "HTML",
 		DisableWebPagePreview: true,
@@ -245,7 +256,7 @@ func (c *TelegramCalls) PlayedTime(chatId int64) (uint64, error) {
 }
 
 // SeekStream jumps to a specific time in the current media stream.
-func (c *TelegramCalls) SeekStream(bot *td.Client, chatID int64, filePath string, toSeek, duration int, isVideo bool) error {
+func (c *TelegramCalls) SeekStream(bot *dt.Client, chatID int64, filePath string, toSeek, duration int, isVideo bool) error {
 	if toSeek < 0 || duration <= 0 {
 		return errors.New("invalid seek position or duration. The position must be positive and the duration must be greater than 0")
 	}
@@ -265,7 +276,7 @@ func (c *TelegramCalls) SeekStream(bot *td.Client, chatID int64, filePath string
 }
 
 // RegisterHandlers sets up the event handlers for the voice call client.
-func (c *TelegramCalls) RegisterHandlers(client *td.Client) {
+func (c *TelegramCalls) RegisterHandlers(client *dt.Client) {
 	c.startAutoLeave(context.Background(), client)
 
 	for _, call := range c.assistants {

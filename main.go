@@ -11,6 +11,7 @@ package main
 import (
 	"ashokshau/tgmusic/config"
 	"ashokshau/tgmusic/src"
+	"ashokshau/tgmusic/src/core/db"
 	"ashokshau/tgmusic/src/core/dl"
 	"ashokshau/tgmusic/src/handlers"
 	"ashokshau/tgmusic/src/vc"
@@ -74,6 +75,17 @@ func main() {
 		slog.Error("manager.RegisterClient error", "error", err)
 		os.Exit(1)
 	}
+
+	// Initialize the database early so other packages can use db.Instance
+	if err := db.InitDatabase(); err != nil {
+		slog.Error("Failed to initialize database", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if db.Instance != nil {
+			_ = db.Instance.Close()
+		}
+	}()
 
 	if config.DlBotToken != "" {
 		dlClientConfig := gotdbot.DefaultClientConfig()
