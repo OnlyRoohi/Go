@@ -10,7 +10,7 @@ package vc
 
 /*
 #cgo linux LDFLAGS: -L . -lntgcalls -lm -lz
-#cgo darwin LDFLAGS: -L . -lntgcalls -lc++ -lz -lbz2 -liconv -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework QuartzCore -framework CoreMedia -framework VideoToolbox[...]
+#cgo darwin LDFLAGS: -L . -lntgcalls -lc++ -lz -lbz2 -liconv -framework AVFoundation -framework AudioToolbox -framework CoreAudio -framework QuartzCore -framework CoreMedia -framework VideoToolbox
 
 // Currently is supported only dynamically linked library on Windows due to
 // https://github.com/golang/go/issues/63903
@@ -200,7 +200,9 @@ func (c *TelegramCalls) Resume(chatId int64) (bool, error) {
 
 	res, err := call.binding.Resume(chatId)
 	if err != nil {
-		logger.Warn("Failed to resume the call", "error", err, "index", index)
+		if logger != nil {
+			logger.Warn("Failed to resume the call", "error", err, "index", index)
+		}
 		return res, fmt.Errorf("failed to resume: %w", err)
 	}
 
@@ -216,7 +218,9 @@ func (c *TelegramCalls) Mute(chatId int64) (bool, error) {
 
 	res, err := call.binding.Mute(chatId)
 	if err != nil {
-		logger.Warn("Failed to mute the call", "error", err, "index", index)
+		if logger != nil {
+			logger.Warn("Failed to mute the call", "error", err, "index", index)
+		}
 		return res, fmt.Errorf("failed to mute: %w", err)
 	}
 
@@ -232,7 +236,9 @@ func (c *TelegramCalls) Unmute(chatId int64) (bool, error) {
 
 	res, err := call.binding.UnMute(chatId)
 	if err != nil {
-		logger.Warn("Failed to unmute the call", "error", err, "index", index)
+		if logger != nil {
+			logger.Warn("Failed to unmute the call", "error", err, "index", index)
+		}
 		return res, fmt.Errorf("failed to unmute: %w", err)
 	}
 
@@ -248,7 +254,9 @@ func (c *TelegramCalls) PlayedTime(chatId int64) (uint64, error) {
 
 	_time, err := call.binding.Time(chatId, 0)
 	if err != nil {
-		logger.Warn("Failed to get played time", "error", err, "index", index)
+		if logger != nil {
+			logger.Warn("Failed to get played time", "error", err, "index", index)
+		}
 		return 0, fmt.Errorf("failed to get played time: %w", err)
 	}
 
@@ -286,19 +294,23 @@ func (c *TelegramCalls) RegisterHandlers(client *dt.Client) {
 			}
 
 			if err := c.PlayNext(client, chatID); err != nil {
-				call.App.Logger.Warnf("[OnStreamEnd] Failed to play the song: %v", err)
+				if call.App != nil {
+					call.App.Logger.Warnf("[OnStreamEnd] Failed to play the song: %v", err)
+				}
 			}
 		})
 
 		go func() {
-			_, err := call.App.SendMessage(client.Me.Usernames.EditableUsername, "/start")
-			if err != nil {
-				call.App.Logger.Warnf("failed to start bot: %v", err)
-			}
+			if call.App != nil {
+				_, err := call.App.SendMessage(client.Me.Usernames.EditableUsername, "/start")
+				if err != nil {
+					call.App.Logger.Warnf("failed to start bot: %v", err)
+				}
 
-			_, err = call.App.SendMessage(config.LoggerId, "Userbot started.")
-			if err != nil {
-				call.App.Logger.Warnf("Failed to send message: %v", err)
+				_, err = call.App.SendMessage(config.LoggerId, "Userbot started.")
+				if err != nil {
+					call.App.Logger.Warnf("Failed to send message: %v", err)
+				}
 			}
 		}()
 	}
