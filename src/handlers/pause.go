@@ -46,11 +46,7 @@ func resumeHandler(c *td.Client, m *td.Message) error {
 
 	chatID := m.ChatId
 
-	if chatID > 0 {
-		_, _ = m.ReplyText(c, "This command can only be used in a supergroup.", nil)
-		return nil
-	}
-
+	// Allow resume to be used in groups where playback exists; do not block based on positive/negative chatID.
 	if !cache.ChatCache.IsActive(chatID) {
 		_, _ = m.ReplyText(c, "There is no active playback in the video chat.", nil)
 		return nil
