@@ -25,7 +25,8 @@ var (
 	DlBotToken          = os.Getenv("DL_BOT_TOKEN")
 	SessionStrings      = getSessionStrings("STRING", 10)
 	SessionType         = getEnv("SESSION_TYPE", "pyrogram")
-	MongoUri            = os.Getenv("MONGO_URI")
+	// Support both MONGODB_URI and MONGO_URI. Prefer MONGODB_URI if set for compatibility with some providers.
+	MongoUri            = getFirstEnv("MONGODB_URI", "MONGO_URI")
 	DbName              = getEnv("DB_NAME", "Anon")
 	ApiUrl              = getEnv("API_URL", "https://api.onegrab.fun")
 	ApiKey              = os.Getenv("API_KEY")
@@ -47,6 +48,16 @@ var (
 	CookiesPath []string
 	cookiesUrl  = processCookieURLs(os.Getenv("COOKIES_URL"))
 )
+
+// getFirstEnv returns the first non-empty environment variable from the list of keys provided.
+func getFirstEnv(keys ...string) string {
+	for _, k := range keys {
+		if v := os.Getenv(k); v != "" {
+			return v
+		}
+	}
+	return ""
+}
 
 func init() {
 	devsEnv := os.Getenv("DEVS")
