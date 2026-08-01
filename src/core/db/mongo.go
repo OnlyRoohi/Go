@@ -57,7 +57,7 @@ func InitDatabase() error {
 		SetMaxConnIdleTime(10 * time.Minute).
 		SetConnectTimeout(20 * time.Second)
 
-	client, err := mongo.Connect(opts)
+	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
 		return err
 	}
