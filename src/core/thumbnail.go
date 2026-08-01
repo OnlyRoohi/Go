@@ -9,6 +9,7 @@ package core
 
 import (
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -20,6 +21,15 @@ import (
 	"path/filepath"
 	"time"
 )
+
+// ThumbMeta contains metadata stored alongside generated thumbnails.
+type ThumbMeta struct {
+	Title     string `json:"title"`
+	Duration  string `json:"duration"`
+	Requester string `json:"requester"`
+	Channel   string `json:"channel"`
+	Generated int64  `json:"generated_unix"`
+}
 
 // GenerateThumbnail tries to download a thumbnail from thumbURL and saves it to downloads/thumbnails.
 // If thumbURL is empty or download fails, it generates a simple placeholder image.
@@ -33,6 +43,7 @@ func GenerateThumbnail(title, duration, requester, channel, thumbURL string) (st
 	_, _ = h.Write([]byte(title + "|" + channel))
 	name := fmt.Sprintf("thumb_%x.jpg", h.Sum(nil))
 	outPath := filepath.Join(cacheDir, name)
+	metaPath := outPath + ".json"
 
 	// If already exists and not older than 24h, return it
 	if fi, err := os.Stat(outPath); err == nil {
@@ -51,6 +62,7 @@ func GenerateThumbnail(title, duration, requester, channel, thumbURL string) (st
 			if err == nil {
 				_, _ = io.Copy(f, resp.Body)
 				f.Close()
+				_ = writeThumbMeta(metaPath, title, duration, requester, channel)
 				return outPath, nil
 			}
 		}
@@ -83,5 +95,17 @@ func GenerateThumbnail(title, duration, requester, channel, thumbURL string) (st
 		return "", err
 	}
 
+	_ = writeThumbMeta(metaPath, title, duration, requester, channel)
 	return outPath, nil
+}
+
+func writeThumbMeta(path, title, duration, requester, channel string) error {
+	meta := ThumbMeta{Title: title, Duration: duration, Requester: requester, Channel: channel, Generated: time.Now().Unix()}
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	return enc.Encode(meta)
 }
